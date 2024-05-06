@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT */
 #include <drm/drm_fbdev_generic.h>
-#include <drm/drm_fb_helper.h>
 #include <drm/drm_print.h>
+#include <drm/drm_rect.h>
 #include <linux/usb.h>
 #include "mpro.h"
 
@@ -10,16 +10,42 @@ static char cmd_draw[12] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-int mpro_blit(struct mpro_device *mpro) {
+int mpro_blit(struct mpro_device *mpro, struct drm_rect* rect) {
+
+	int cmd_len = 6;
+
+	// partial frame update
+	if ( rect -> x1 != 0 || rect -> y1 != 0 || rect -> x2 != mpro -> info.rect.x2 || rect -> y2 != mpro -> info.rect.y2 ) {
+
+		int len = (rect -> x2 - rect -> x1) * (rect -> y2 - rect -> y1) * MPRO_BPP / 8;
+		int width = rect -> x2 - rect -> x1;
+
+		cmd_draw[2] = (char)(len >> 0);
+		cmd_draw[3] = (char)(len >> 8);
+		cmd_draw[4] = (char)(len >> 16);
+
+		cmd_draw[6] = (char)(rect -> x1 >> 0);
+		cmd_draw[7] = (char)(rect -> x1 >> 8);
+		cmd_draw[8] = (char)(rect -> y1 >> 0);
+		cmd_draw[9] = (char)(rect -> y1 >> 8);
+		cmd_draw[10] = (char)(width >> 0);
+		cmd_draw[11] = (char)(width >> 8);
+
+		cmd_len = 12;
+
+	} else { // fullscreen frame update
+
+		cmd_draw[2] = (char)(mpro -> block_size >> 0);
+		cmd_draw[3] = (char)(mpro -> block_size >> 8);
+		cmd_draw[4] = (char)(mpro -> block_size >> 16);
+	}
 
 	struct usb_device *udev = mpro_to_usb_device(mpro);
-	//int cmd_len = mpro -> config.partial < 1 ? 6 : 12;
-	//int cmd_len = 6;
 	int ret;
 
 	/* 0x40 USB_DIR_OUT | USB_TYPE_VENDOR | USB_RECIP_DEVICE */
 	ret = usb_control_msg(udev, usb_sndctrlpipe(udev, 0), 0xb0, 0x40,
-			      0, 0, cmd_draw, mpro -> config.partial < 1 ? 6 : 12,
+			      0, 0, cmd_draw, cmd_len,
 			      MPRO_MAX_DELAY);
 	if ( ret < 0 )
 		return ret;
@@ -29,36 +55,6 @@ int mpro_blit(struct mpro_device *mpro) {
 
 	return ret < 0 ? ret : 0;
 }
-
-static int mpro_fbdev_helper_fb_probe(struct drm_fb_helper *fb_helper, struct drm_fb_helper_surface_size *sizes) {
-	return 0;
-}
-
-static int mpro_fbdev_helper_fb_dirty(struct drm_fb_helper *helper, struct drm_clip_rect *clip) {
-
-	struct drm_device *dev = helper -> dev;
-	struct mpro_device *mpro = to_mpro(dev);
-
-	/* Call damage handlers only if necessary */
-	if ( !( clip -> x1 < clip -> x2 && clip -> y1 < clip -> y2 ))
-		return 0;
-/*
-	if ( mpro -> config.flipx )
-		drm_fb_xrgb8888_to_rgb565_flipped(&mpro -> screen_base, &mpro -> pitch, shadow_plane_state -> data, fb, &damage, false);
-	else
-		drm_fb_xrgb8888_to_rgb565(&mpro -> screen_base, &mpro -> pitch, shadow_plane_state -> data, fb, &damage, false);
-*/
-	// fullscreen only
-	mpro_blit(mpro);
-
-	return 0;
-}
-
-static const struct drm_fb_helper_funcs mpro_fb_helper_funcs = {
-	.fb_probe = mpro_fbdev_helper_fb_probe,
-	.fb_dirty = mpro_fbdev_helper_fb_dirty,
-};
-
 
 int mpro_fbdev_setup(struct mpro_device *mpro, unsigned int preferred_bpp) {
 
@@ -71,14 +67,5 @@ int mpro_fbdev_setup(struct mpro_device *mpro, unsigned int preferred_bpp) {
 		return ret;
 
 	drm_fbdev_generic_setup(&mpro -> dev, preferred_bpp);
-
-	return 0;
-
-	if ( !mpro -> dev.registered ) {
-		drm_err(&mpro -> dev, "device has not registered");
-		return -ENODEV;
-	}
-
-	mpro -> dev.fb_helper -> funcs = &mpro_fb_helper_funcs;
 	return 0;
 }

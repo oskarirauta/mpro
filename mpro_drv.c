@@ -32,7 +32,7 @@ static int mpro_data_alloc(struct mpro_device *mpro) {
 
 	unsigned int block_size = mpro -> info.height * mpro -> info.width * MPRO_BPP / 8 + mpro -> info.margin;
 
-	mpro -> data = drmm_kmalloc(&mpro -> dev, block_size, GFP_KERNEL);
+	mpro -> data = drmm_kmalloc(&mpro -> dev, PAGE_ALIGN(block_size), GFP_KERNEL);
 	if ( !mpro -> data )
 		return -ENOMEM;
 

@@ -110,7 +110,7 @@ void drm_fb_xrgb8888_to_rgb565_flipped(struct iosys_map *dst, const unsigned int
 
 int mpro_mode(struct mpro_device *mpro);
 int mpro_modeset(struct mpro_device* mpro);
-int mpro_blit(struct mpro_device *mpro);
+int mpro_blit(struct mpro_device *mpro, struct drm_rect *rect);
 
 int mpro_init_planes(struct mpro_device *mpro);
 int mpro_init_connector(struct mpro_device *mpro);

@@ -18,10 +18,9 @@ static void mpro_primary_plane_helper_atomic_update(struct drm_plane *plane, str
 	struct mpro_device *mpro = to_mpro(dev);
 	struct drm_atomic_helper_damage_iter iter;
 	struct drm_rect damage;
-	int ret, idx;
+	int idx;
 
-	ret = drm_gem_fb_begin_cpu_access(fb, DMA_FROM_DEVICE);
-	if ( ret )
+	if ( drm_gem_fb_begin_cpu_access(fb, DMA_FROM_DEVICE))
 		return;
 
 	if ( !drm_dev_enter(dev, &idx))
@@ -43,23 +42,14 @@ static void mpro_primary_plane_helper_atomic_update(struct drm_plane *plane, str
 		else
 			drm_fb_xrgb8888_to_rgb565(&dst, &mpro -> pitch, shadow_plane_state -> data, fb, &damage, false);
 
-		// partial updates:
-		/*
+		// partial frame updates:
 		if ( mpro -> config.partial > 0 )
-			drm_fb_blit(&mpro -> screen_base, &mpro -> pitch, mpro -> format -> format, shadow_plane_state -> data, fb, &damage);
-		*/
+			mpro_blit(mpro, &damage);
 	}
 
-	// fullscreen only
-	mpro_blit(mpro);
-/*
-	// fullscreen update:
-	if ( mpro -> config.partial < 1 ) {
-
-		//drm_fb_blit(&mpro -> screen_base, &mpro -> pitch, mpro -> format -> format, shadow_plane_state -> data, fb, &mpro -> info.rect);
-		mpro_blit(mpro);
-	}
-*/
+	// fullscreen frame update:
+	if ( mpro -> config.partial < 1 )
+		mpro_blit(mpro, &mpro -> info.rect);
 
 	drm_dev_exit(idx);
 
@@ -76,9 +66,10 @@ static void mpro_primary_plane_helper_atomic_disable(struct drm_plane *plane, st
 	if ( !drm_dev_enter(dev, &idx))
 		return;
 
-	/* Clear screen to black if disabled */
+	/* Clear screen to black on disable */
 	iosys_map_memset(&mpro -> screen_base, 0, 0, mpro -> block_size);
-	mpro_blit(mpro);
+	//memset(mpro -> data, 0xff, mpro -> block_size);
+	mpro_blit(mpro, &mpro -> info.rect);
 
 	drm_dev_exit(idx);
 }
