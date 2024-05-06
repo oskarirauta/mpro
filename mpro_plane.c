@@ -21,7 +21,7 @@ static void mpro_primary_plane_helper_atomic_update(struct drm_plane *plane, str
 	int ret, idx;
 
 	ret = drm_gem_fb_begin_cpu_access(fb, DMA_FROM_DEVICE);
-	if (ret)
+	if ( ret )
 		return;
 
 	if ( !drm_dev_enter(dev, &idx))
@@ -33,7 +33,7 @@ static void mpro_primary_plane_helper_atomic_update(struct drm_plane *plane, str
 		struct drm_rect dst_clip = plane_state -> dst;
 		struct iosys_map dst = mpro -> screen_base;
 
-		if (!drm_rect_intersect(&dst_clip, &damage))
+		if ( !drm_rect_intersect(&dst_clip, &damage))
 			continue;
 
 		iosys_map_incr(&dst, drm_fb_clip_offset(mpro -> pitch, mpro -> format, &dst_clip));
@@ -43,11 +43,23 @@ static void mpro_primary_plane_helper_atomic_update(struct drm_plane *plane, str
 		else
 			drm_fb_xrgb8888_to_rgb565(&dst, &mpro -> pitch, shadow_plane_state -> data, fb, &damage, false);
 
-		// update partial here, damage is the rect
+		// partial updates:
+		/*
+		if ( mpro -> config.partial > 0 )
+			drm_fb_blit(&mpro -> screen_base, &mpro -> pitch, mpro -> format -> format, shadow_plane_state -> data, fb, &damage);
+		*/
 	}
 
 	// fullscreen only
 	mpro_blit(mpro);
+/*
+	// fullscreen update:
+	if ( mpro -> config.partial < 1 ) {
+
+		//drm_fb_blit(&mpro -> screen_base, &mpro -> pitch, mpro -> format -> format, shadow_plane_state -> data, fb, &mpro -> info.rect);
+		mpro_blit(mpro);
+	}
+*/
 
 	drm_dev_exit(idx);
 

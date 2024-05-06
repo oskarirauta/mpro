@@ -55,9 +55,6 @@ static struct mpro_device *mpro_device_create(struct drm_driver *drv, struct usb
 	mpro -> config.flipx = flipx == 0 ? 0 : 1;
 	mpro -> config.partial = partial == 0 ? 0 : 1;
 
-	if ( mpro -> config.flipx )
-		drm_info(dev, "image flip on x axis is enabled");
-
 	/* Hardware setup */
 	mpro -> dmadev = usb_intf_get_dma_device(to_usb_interface(dev -> dev));
 	if ( !mpro -> dmadev )
@@ -66,6 +63,12 @@ static struct mpro_device *mpro_device_create(struct drm_driver *drv, struct usb
 	ret = mpro_mode(mpro);
 	if ( ret )
 		return ERR_PTR(ret);
+
+	if ( mpro -> config.flipx )
+		drm_info(dev, "image flip on x axis is enabled");
+
+	if ( mpro -> config.partial > 0 )
+		drm_info(dev, "partial frame updates enabled");
 
 	/* Memory management */
 	ret = mpro_data_alloc(mpro);
@@ -121,20 +124,11 @@ static int mpro_probe(struct usb_interface* interface, const struct usb_device_i
 	if ( IS_ERR(mpro))
 		return PTR_ERR(mpro);
 
-	dev = &mpro -> dev;
-	ret = drm_dev_register(dev, 0);
-	if ( ret )
-		return ret;
-
 	ret = mpro_init_sysfs(mpro);
 	if ( ret )
 		drm_warn(dev, "failed to add sysfs entries");
 
-	// prepare blit setup
-	mpro_prepare(mpro);
-	drm_fbdev_generic_setup(dev, 16);
-
-	return 0;
+	return mpro_fbdev_setup(mpro, MPRO_BPP);
 }
 
 static void mpro_remove(struct usb_interface *interface) {

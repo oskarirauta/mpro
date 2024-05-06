@@ -4,6 +4,7 @@
 #include <drm/drm_print.h>
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_gem_framebuffer_helper.h>
+#include <drm/drm_rect.h>
 #include "mpro.h"
 
 #define MODEL_DEFAULT		"MPRO\n"
@@ -139,12 +140,15 @@ static int mpro_get_id(struct mpro_device *mpro) {
 static void mpro_create_info(struct mpro_device *mpro, unsigned int width, unsigned int height,
 			     unsigned int width_mm, unsigned int height_mm, unsigned int margin) {
 
+	struct drm_rect rect = { .x1 = 0, .y1 = 0, .x2 = width - 1, .y2 = height - 1 };
+
 	mpro -> info.width = width;
 	mpro -> info.height = height;
 	mpro -> info.width_mm = width_mm;
 	mpro -> info.height_mm = height_mm;
 	mpro -> info.margin = margin;
 	mpro -> info.hz = 60;
+	mpro -> info.rect = rect;
 }
 
 int mpro_mode(struct mpro_device *mpro) {

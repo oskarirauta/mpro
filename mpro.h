@@ -17,6 +17,7 @@
 #include <drm/drm_connector.h>
 #include <drm/drm_encoder.h>
 #include <drm/drm_crtc.h>
+#include <drm/drm_rect.h>
 
 // We only support rgb565 though..
 #define MPRO_FORMATS \
@@ -47,6 +48,7 @@ struct mpro_info {
 	int margin;
 	int hz;
 	int stride;
+	struct drm_rect rect;
 };
 
 struct mpro_config {
@@ -94,13 +96,11 @@ static const uint64_t mpro_primary_plane_format_modifiers[] = {
 	DRM_FORMAT_MOD_INVALID
 };
 
-static inline struct mpro_device *to_mpro(struct drm_device *dev)
-{
+static inline struct mpro_device *to_mpro(struct drm_device *dev) {
 	return container_of(dev, struct mpro_device, dev);
 }
 
-static inline struct usb_device *mpro_to_usb_device(struct mpro_device *mpro)
-{
+static inline struct usb_device *mpro_to_usb_device(struct mpro_device *mpro) {
 	return interface_to_usbdev(to_usb_interface(mpro -> dev.dev));
 }
 
@@ -111,10 +111,11 @@ void drm_fb_xrgb8888_to_rgb565_flipped(struct iosys_map *dst, const unsigned int
 int mpro_mode(struct mpro_device *mpro);
 int mpro_modeset(struct mpro_device* mpro);
 int mpro_blit(struct mpro_device *mpro);
-extern void mpro_prepare(struct mpro_device *mpro);
 
 int mpro_init_planes(struct mpro_device *mpro);
 int mpro_init_connector(struct mpro_device *mpro);
 int mpro_init_sysfs(struct mpro_device *mpro);
+
+int mpro_fbdev_setup(struct mpro_device *mpro, unsigned int preferred_bpp);
 
 #endif /* _MPRO_H_ */
